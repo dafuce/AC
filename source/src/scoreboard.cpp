@@ -19,7 +19,7 @@ VARFP(sc_frags,      0,  1, 100, needscoresreorder = true);
 VARFP(sc_deaths,    -1,  2, 100, needscoresreorder = true);
 VARFP(sc_ratio,     -1, -1, 100, needscoresreorder = true);
 VARFP(sc_lag,       -1,  4, 100, needscoresreorder = true);
-VARFP(sc_clientnum,  0,  5, 100, needscoresreorder = true);
+VARFP(sc_clientnum, -1,  5, 100, needscoresreorder = true);
 VARFP(sc_name,       0,  6, 100, needscoresreorder = true);
 
 struct coldata
@@ -249,9 +249,9 @@ void renderteamscore(teamscore *t)
     line.addcol(sc_deaths, "%d", t->deaths);
     line.addcol(sc_ratio, "%.2f", SCORERATIO(t->frags, t->deaths));
     if(multiplayer(NULL) || watchingdemo) line.addcol(sc_lag);
-    line.addcol(sc_clientnum, "%s", team_string(t->team));
     int n = t->teammembers.length();
-    line.addcol(sc_name, "(%d %s)", n, n == 1 ? "player" : "players");
+    line.addcol(sc_clientnum, "(%d %s)", n, n == 1 ? "player" : "players");
+    line.addcol(sc_name, "%s", team_string(t->team));
 
     static color teamcolors[2] = { color(1.0f, 0, 0, 0.2f), color(0, 0, 1.0f, 0.2f) };
     line.bgcolor = &teamcolors[team_base(t->team)];
@@ -344,7 +344,7 @@ void renderscores(void *menu, bool init)
     if(getclientmap()[0])
     {
         bool fldrprefix = !strncmp(getclientmap(), "maps/", strlen("maps/"));
-        formatstring(modeline)("\"%s\" on map %s", modestr(gamemode, modeacronyms > 0), fldrprefix ? getclientmap()+strlen("maps/") : getclientmap());
+        formatstring(modeline)("%s on map %s", modestr(gamemode, modeacronyms > 0), fldrprefix ? getclientmap()+strlen("maps/") : getclientmap());
     }
 
     extern int minutesremaining, gametimedisplay;
@@ -354,29 +354,29 @@ void renderscores(void *menu, bool init)
     {
         if(!minutesremaining)
         {
-            concatstring(modeline, ", intermission");
+            concatstring(modeline, " intermission");
 
             if (m_teammode) // Add in the winning team
             {
                 switch(winner)
                 {
-                    case TEAM_CLA: concatstring(modeline, ", \f3CLA wins!"); break;
-                    case TEAM_RVSF: concatstring(modeline, ", \f1RVSF wins!"); break;
+                    case TEAM_CLA: concatstring(modeline, " \f3CLA wins!"); break;
+                    case TEAM_RVSF: concatstring(modeline, " \f1RVSF wins!"); break;
                     case -1:
                     default:
-                        concatstring(modeline, ", \f2it's a tie!");
+                        concatstring(modeline, " \f2it's a tie!");
                     break;
                 }
             }
             else // Add the winning player
             {
-                if (winner < 0) concatstring(modeline, ", \f2it's a tie!");
-                else concatformatstring(modeline, ", \f1%s wins!", scores[0]->name);
+                if (winner < 0) concatstring(modeline, " \f2it's a tie!");
+                else concatformatstring(modeline, " \f1%s wins!", scores[0]->name);
             }
         }
         else
         {
-            concatformatstring(modeline, ", %s", gtime);
+            concatformatstring(modeline, " %s", gtime);
             if(gametimedisplay == 2) concatformatstring(modeline, " / %d:00", gametimemaximum/60000);
             else concatformatstring(modeline, " remaining");
         }

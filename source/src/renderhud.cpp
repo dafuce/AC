@@ -688,6 +688,17 @@ void drawradar_vicinity(playerent *p, int w, int h)
         quad(compasstex->id, -halfviewsize-8, -halfviewsize-8, radarviewsize+16, 0, 0, 1, 1);
         glPopMatrix();
     }
+    if(getclientmap()[0])
+    {
+        const char *mapname = behindpath(getclientmap());
+        int mapnamew = text_width(mapname);
+        int mapnamex = centerpos.x - mapnamew/4;
+        int mapnamey = centerpos.y + halfviewsize + 24;
+        glPushMatrix();
+        glScalef(0.5f, 0.5f, 1.0f);
+        draw_text(mapname, mapnamex*2, mapnamey*2, 255, 255, 255);
+        glPopMatrix();
+    }
 }
 
 void drawradar(playerent *p, int w, int h)
@@ -702,7 +713,7 @@ void drawteamicons(int w, int h, bool spect)
     glColor3f(1, 1, 1);
     static Texture *icons = NULL;
     if(!icons) icons = textureload("packages/misc/teamicons.png", 3);
-    if(player1->team < TEAM_SPECT || spect) quad(icons->id, VIRTW-VIRTH/12-10, 10, VIRTH/12, team_base(spect ? players[player1->followplayercn]->team : player1->team) ? 0.5f : 0, 0, 0.49f, 1.0f);
+    if(player1->team < TEAM_SPECT || spect) quad(icons->id, VIRTW/4.0f*3.0f + 120, 1650, VIRTH/12, team_base(spect ? players[player1->followplayercn]->team : player1->team) ? 0.5f : 0, 0, 0.49f, 1.0f);
 }
 
 int damageblendmillis = 0;
@@ -932,9 +943,14 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
         formatstring(gtime)("%02d:%02d", gtmin, gtsec);
         if(gametimedisplay)
         {
-            int clockx = (VIRTW-225-10)*2 - (text_width(gtime)/2 + FONTH/2);
-            if(gametimedisplay == 1 && gtmin == 0 && gtsec <= 59) draw_text(gtime, clockx, 20, 255, 102, 0);
-            else draw_text(gtime, clockx, 20);
+            const float clockscale = 1.5f;
+            int clockx = (VIRTW/4.0f*3.0f + 120)*2 - int(text_width(gtime)*clockscale + FONTH*clockscale/2);
+            int clocky = 1700 * 2;
+            glPushMatrix();
+            glScalef(clockscale, clockscale, 1.0f);
+            if(gametimedisplay == 1 && gtmin == 0 && gtsec <= 59) draw_text(gtime, int(clockx/clockscale), int(clocky/clockscale), 255, 102, 0);
+            else draw_text(gtime, int(clockx/clockscale), int(clocky/clockscale));
+            glPopMatrix();
         }
     }
 
@@ -1080,17 +1096,20 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
             turn_on_transparency(255);
             int scores[4], offs = m_flags_ ? 0 : 2;
             calcteamscores(scores);
-            const char *cc = scores[offs] > 99 || scores[offs + 1] > 99 ? "31" : "55";
+            const int teamscoreiconsize = 120, teamscoregap = 20, teamscoretop = 20, teamscoretextgap = 10;
+            int teamscorex = VIRTW / 2 - (teamscoreiconsize*2 + teamscoregap) / 2;
+            int playerteam = team_isactive(player1->team) ? team_base(player1->team) : 0;
 
-            if(!offs || scores[2] || scores[3]) loopi(2) // flag state or frag-counter
+            loopi(2) // flag state or frag-counter
             {
-                bool inbase = flaginfos[i].state == CTFF_INBASE || offs;
-                drawctficon(i*120+VIRTW/4.0f*3.0f, 1650, 120, i + (inbase || flagscorehudtransparency == 2 ? 0 : 2), offs / 2, 1/4.0f, inbase || !flagscorehudtransparency ? 255 : 100);
+                int scoreteam = m_teammode ? (i ? playerteam ^ 1 : playerteam) : i;
+                bool inbase = flaginfos[scoreteam].state == CTFF_INBASE || offs;
+                drawctficon(teamscorex + i*(teamscoreiconsize + teamscoregap), teamscoretop, teamscoreiconsize, scoreteam + (inbase || flagscorehudtransparency == 2 ? 0 : 2), offs / 2, 1/4.0f, inbase || !flagscorehudtransparency ? 255 : 100);
                 if(m_teammode)
                 {
-                    defformatstring(count)("\f%c%d", cc[i], scores[i + offs]);
+                    defformatstring(count)("\f%c%d", scoreteam ? '1' : '3', scores[scoreteam + offs]);
                     int countwidth = text_width(count);
-                    draw_text(count, i * 120 + VIRTW / 4.0f * 3.0f + (countwidth > 114 ? (i ? 3 : (120 - countwidth - 3)) : (60 - countwidth / 2)), 1590);
+                    draw_text(count, teamscorex + i*(teamscoreiconsize + teamscoregap) + (countwidth > 114 ? (i ? 3 : (teamscoreiconsize - countwidth - 3)) : (teamscoreiconsize/2 - countwidth / 2)), teamscoretop + teamscoreiconsize + teamscoretextgap);
                 }
             }
             if(!offs)
