@@ -991,13 +991,14 @@ VARP(oldfashionedgunstats, 0, 0, 1);
 void weapon::renderstats()
 {
     string gunstats;
-    if(oldfashionedgunstats) formatstring(gunstats)("%d/%d", mag, ammo); else formatstring(gunstats)("%d", mag);
+    char ammocolor = rangecolor(mag + ammo, "3955", 1, info.magsize*2 + 1, info.magsize*2 + 1);
+    if(oldfashionedgunstats) formatstring(gunstats)("\f%c%d/%d", ammocolor, mag, ammo); else formatstring(gunstats)("\f%c%d", ammocolor, mag);
     draw_text(gunstats, HUDPOS_WEAPON + HUDPOS_NUMBERSPACING, 823);
     if(!oldfashionedgunstats)
     {
         int offset = text_width(gunstats);
         glScalef(0.5f, 0.5f, 1.0f);
-        formatstring(gunstats)("%d", ammo);
+        formatstring(gunstats)("\f%c%d", ammocolor, ammo);
         draw_text(gunstats, (HUDPOS_WEAPON + HUDPOS_NUMBERSPACING + offset)*2, 826*2);
         glLoadIdentity();
     }

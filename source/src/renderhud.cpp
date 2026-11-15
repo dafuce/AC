@@ -721,14 +721,6 @@ void damageblend(int n, void *p)
     damageblendplayer = p;
 }
 
-inline char rangecolor(int val, const char *colors, int thres1, int thres2, int thres3)
-{
-    if(val < thres1) return colors[0];
-    else if(val < thres2) return colors[1];
-    else if(val < thres3) return colors[2];
-    return colors[3];
-}
-
 string enginestateinfo = "";
 COMMANDF(getEngineState, "", () { result(enginestateinfo); });
 
@@ -840,7 +832,8 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
     }
     else if(targetplayer && showtargetname) 
     {
-        defformatstring(tpinfo)("%s [cn:%d]", colorname(targetplayer), targetplayer->clientnum);
+        bool enemy = !m_teammode || (team_isactive(player1->team) && team_isactive(targetplayer->team) && team_base(player1->team) != team_base(targetplayer->team));
+        defformatstring(tpinfo)("%s%s\f5", enemy ? "\f3" : "\f5", colorname(targetplayer));
         draw_text(tpinfo, HUDPOS_X_BOTTOMLEFT, HUDPOS_Y_BOTTOMLEFT);
     }
     glLoadIdentity();
@@ -937,7 +930,12 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
             }
         }
         formatstring(gtime)("%02d:%02d", gtmin, gtsec);
-        if(gametimedisplay) draw_text(gtime, (VIRTW-225-10)*2 - (text_width(gtime)/2 + FONTH/2), 20);
+        if(gametimedisplay)
+        {
+            int clockx = (VIRTW-225-10)*2 - (text_width(gtime)/2 + FONTH/2);
+            if(gametimedisplay == 1 && gtmin == 0 && gtsec <= 59) draw_text(gtime, clockx, 20, 255, 102, 0);
+            else draw_text(gtime, clockx, 20);
+        }
     }
 
     if(hidevote < 2 && multiplayer(NULL))
@@ -1060,7 +1058,7 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
         if(p->state == CS_ALIVE && !hidehudequipment)
         {
             pushfont("huddigits");
-            draw_textf("%d", HUDPOS_HEALTH + HUDPOS_NUMBERSPACING, 823, p->health);
+            draw_textf("\f%c%d", HUDPOS_HEALTH + HUDPOS_NUMBERSPACING, 823, rangecolor(p->health, "3955", 26, 51, 51), p->health);
             if(p->armour) draw_textf("%d", HUDPOS_ARMOUR + HUDPOS_NUMBERSPACING, 823, p->armour);
             if(p->weaponsel && valid_weapon(p->weaponsel->type))
             {

@@ -935,30 +935,49 @@ void dodamage(int damage, playerent *pl, playerent *actor, int gun, bool gib, bo
     else audiomgr.playsound(S_PAIN1+rnd(5), pl);
 }
 
+// color the names in the killfeed based on team red or blue. Have white if the team sizes is 1
+static bool killfeedteamcolors()
+{
+    if(!m_teammode) return false;
+
+    int teamsize[2] = { 0, 0 };
+    loopv(players) if(players[i] && players[i] != player1 && team_isactive(players[i]->team)) teamsize[team_base(players[i]->team)]++;
+    if(player1 && team_isactive(player1->team)) teamsize[team_base(player1->team)]++;
+    return teamsize[0] > 1 || teamsize[1] > 1;
+}
+
+static const char *killfeedname(playerent *d)
+{
+    static string name[4];
+    static int index = 0;
+    const char *color = killfeedteamcolors() ? (team_base(d->team) ? "\f1" : "\f3") : "\f5";
+    index = (index + 1) % 4;
+    formatstring(name[index])("%s%s\f5", color, colorname(d));
+    return name[index];
+}
+
 void dokill(playerent *pl, playerent *act, bool gib, int gun)
 {
     if(pl->state!=CS_ALIVE || intermission) return;
 
     exechook(HOOK_SP, "onKill", "%d %d %d %d", act->clientnum, pl->clientnum, gun, gib ? 1 : 0);
 
-    const char *pname = pl == player1 ? "you" : colorname(pl);
-    const char *aname = act == player1 ? "you" : colorname(act);
+    const char *pname = killfeedname(pl);
+    const char *aname = killfeedname(act);
     const char *death = killmessage(gun, gib);
     void (*outf)(const char *s, ...) = (pl == player1 || act == player1) ? hudoutf : conoutf;
 
     if(pl==act)
     {
-        outf("\f2%s suicided%s", pname, pl==player1 ? "!" : "");
+        outf("\f5%s suicided%s", pname, pl==player1 ? "!" : "");
     }
     else if(isteam(pl->team, act->team))
     {
-        if(pl==player1) outf("\f2you were %s by teammate %s", death, aname);
-        else outf("%s%s %s teammate %s", act==player1 ? "\f3" : "\f2", aname, death, pname);
+        outf("\f5%s was %s by teammate %s", pname, death, aname);
     }
     else
     {
-        if(pl==player1) outf("\f2you were %s by %s", death, aname);
-        else outf("\f2%s %s %s", aname, death, pname);
+        outf("\f5%s was %s by %s", pname, death, aname);
     }
 
     if(pl == act || isteam(pl->team, act->team))

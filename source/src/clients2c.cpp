@@ -1012,7 +1012,7 @@ void parsemessages(int cn, playerent *d, ucharbuf &p, bool demo = false)
                 conoutf("the round is over! next round in 5 seconds...");
                 if(m_botmode && acn==-2) hudoutf("the bots have won the round!");
                 else if(acn==-1) hudoutf("everyone died!");
-                else if(m_teammode) hudoutf("team %s has won the round!", team_string(alive->team));
+                else if(m_teammode) hudoutf("team \f%c%s\f5 has won the round!", team_base(alive->team) ? '1' : '3', team_string(alive->team));
                 else if(alive==player1) hudoutf("you are the survivor!");
                 else hudoutf("%s is the survivor!", colorname(alive));
                 arenaintermission = lastmillis;

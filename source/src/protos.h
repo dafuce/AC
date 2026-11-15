@@ -1,5 +1,13 @@
 // protos for ALL external functions in cube...
 
+inline char rangecolor(int val, const char *colors, int thres1, int thres2, int thres3)
+{
+    if(val < thres1) return colors[0];
+    else if(val < thres2) return colors[1];
+    else if(val < thres3) return colors[2];
+    return colors[3];
+}
+
 struct authkey
 {
     const char *name;
