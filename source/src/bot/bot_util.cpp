@@ -475,6 +475,13 @@ bool IsInGame(dynent *d)
      {
           if (d == player1)
                return true;
+#ifndef STANDALONE
+        loopv(players)
+        {
+            if (players[i] == d)
+                return true;
+        }
+#endif
      }
      return false;
 }

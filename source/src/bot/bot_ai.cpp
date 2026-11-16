@@ -79,6 +79,109 @@ bool CBot::BotsAgainstHumans()
     return false;
 }
 
+bool CBot::CheckCTFObjective()
+{
+    if (!m_ctf || !m_pMyEnt || m_pMyEnt->state != CS_ALIVE)
+        return false;
+
+    int ownflag = team_base(m_pMyEnt->team);
+    int enemyflag = team_opposite(ownflag);
+    flaginfo &own = flaginfos[ownflag];
+    flaginfo &enemy = flaginfos[enemyflag];
+    vec target;
+
+    if (enemy.state == CTFF_STOLEN && enemy.actor == m_pMyEnt)
+    {
+        target = own.pos;
+        AddDebugText("CTF: returning with flag");
+    }
+    else if (enemy.state == CTFF_DROPPED)
+    {
+        target = enemy.pos;
+        AddDebugText("CTF: enemy flag dropped");
+    }
+    else if (own.state == CTFF_DROPPED)
+    {
+        target = own.pos;
+        AddDebugText("CTF: returning own flag");
+    }
+    else if (enemy.state == CTFF_INBASE)
+    {
+        target = enemy.pos;
+        AddDebugText("CTF: attacking enemy base");
+    }
+    else
+        return false;
+
+    if (target == g_vecZero)
+        return false;
+
+    if (GetDistance(target) <= 4.0f)
+    {
+        checkitems(m_pMyEnt);
+        if (enemy.state == CTFF_DROPPED || own.state == CTFF_DROPPED ||
+            (enemy.state == CTFF_STOLEN && enemy.actor == m_pMyEnt))
+            return true;
+    }
+
+    // The final waypoint can be a few metres from the flag/base. Finish the
+    // approach directly only when the target is close and visible.
+    if (GetDistance(target) <= 10.0f && IsVisible(target))
+    {
+        AimToVec(target);
+        m_pMyEnt->move = 1;
+        if (GetDistance(target) <= 3.0f)
+            checkitems(m_pMyEnt);
+        return true;
+    }
+
+    bool newobjective = m_eCurrentBotState != STATE_SP || m_vGoal == g_vecZero ||
+                        GetDistance(m_vGoal, target) > 4.0f;
+    if (newobjective || !m_pCurrentWaypoint || !m_pCurrentGoalWaypoint)
+    {
+        if (newobjective || m_iLookForWaypointTime <= lastmillis)
+        {
+            ResetWaypointVars();
+            m_vGoal = target;
+            m_iLookForWaypointTime = lastmillis + 250;
+
+            waypoint_s *current = GetNearestWaypoint(m_pMyEnt->o, 20.0f);
+            waypoint_s *goal = GetWPFromNode(WaypointClass.GetNearestWaypoint(target, 20.0f, false));
+#ifdef WP_FLOOD
+            if (!current || !goal)
+            {
+                current = GetNearestFloodWP(m_pMyEnt->o, 8.0f);
+                goal = GetNearestFloodWP(target, 8.0f);
+            }
+#endif
+            if (current && goal)
+            {
+                SetCurrentWaypoint(current);
+                SetCurrentGoalWaypoint(goal);
+            }
+        }
+    }
+
+    if (m_pCurrentWaypoint && m_pCurrentGoalWaypoint)
+    {
+        if (!HeadToGoal())
+        {
+            ResetWaypointVars();
+            m_iLookForWaypointTime = lastmillis;
+            return false;
+        }
+    }
+    else
+    {
+        // Let normal navigation run until a valid CTF path can be built.
+        return false;
+    }
+
+    if (GetDistance(target) < 5.0f && IsVisible(target))
+        AimToVec(target);
+    return true;
+}
+
 bool CBot::DetectEnemy(playerent *p)
 {
     return (IsInFOV(p) || (m_pBotSkill->flAlwaysDetectDistance > m_pMyEnt->o.dist(p->o)))
@@ -107,7 +210,9 @@ bool CBot::FindEnemy(void)
         // Check if the enemy is still ingame, still alive, not joined my team and is visible
         if (found && !isteam(m_pMyEnt->team, m_pMyEnt->enemy->team))
         {
-            if ((m_pMyEnt->enemy->state == CS_ALIVE) && (IsVisible(m_pMyEnt->enemy)))
+            if ((m_pMyEnt->enemy->state == CS_ALIVE) &&
+                (IsVisible(m_pMyEnt->enemy) ||
+                 (m_iSawEnemyTime && lastmillis - m_iSawEnemyTime <= 2500)))
                 return true;
             else
                 m_pPrevEnemy = m_pMyEnt->enemy;
@@ -158,7 +263,7 @@ bool CBot::FindEnemy(void)
         }
 
         // Then examine the local player
-        if (player1 && !isteam(player1->team, m_pMyEnt->team) &&
+        if (player1 && player1 != m_pMyEnt && !isteam(player1->team, m_pMyEnt->team) &&
             (player1->state == CS_ALIVE))
         {
             // Check if the enemy is visible
@@ -180,6 +285,35 @@ bool CBot::FindEnemy(void)
                 }
             }
         }
+#ifndef STANDALONE
+        loopv(players)
+        {
+            d = players[i];
+
+            if (!d || d == m_pMyEnt || d == player1 || isteam(d->team, m_pMyEnt->team) ||
+                (d->state != CS_ALIVE))
+                continue;
+
+            // Check if the enemy is visible
+            if(!DetectEnemy(d))
+                continue;
+
+            flDist = GetDistance(d->o);
+            EnemyVal = 1;
+
+            if (flDist < flNearestDist)
+            {
+                EnemyVal+=2;
+                flNearestDist = flDist;
+            }
+
+            if (EnemyVal > BestEnemyVal)
+            {
+                pNewEnemy = d;
+                BestEnemyVal = EnemyVal;
+            }
+        }
+#endif
     //}
 
     if (pNewEnemy)
@@ -312,7 +446,7 @@ bool CBot::CheckHunt(void)
             }
 
         // Then examine the local player
-        if (player1 && !isteam(player1->team, m_pMyEnt->team) &&
+        if (player1 && player1 != m_pMyEnt && !isteam(player1->team, m_pMyEnt->team) &&
             (player1->state == CS_ALIVE) && ((flDist = GetDistance(player1->o)) <= 250.0f))
         {
             d = player1;
@@ -762,7 +896,26 @@ void CBot::MainAI()
         else
             AddDebugText("Heading to debug goal...");
     }
-    if (BotManager.BotsShoot() && FindEnemy()) // Combat
+    bool ctfobjective = CheckCTFObjective();
+    bool hasenemy = BotManager.BotsShoot() && FindEnemy();
+    bool ctfcarrier = m_ctf && flaginfos[team_opposite(team_base(m_pMyEnt->team))].state == CTFF_STOLEN &&
+                      flaginfos[team_opposite(team_base(m_pMyEnt->team))].actor == m_pMyEnt;
+
+    if (hasenemy && ctfobjective && !ctfcarrier)
+    {
+        if (m_iCTFDecisionTime <= lastmillis)
+        {
+            m_bCTFCombatPhase = !m_bCTFCombatPhase;
+            m_iCTFDecisionTime = lastmillis + (m_bCTFCombatPhase ? RandomLong(1500, 3000) : RandomLong(2500, 5000));
+        }
+    }
+    else if (!hasenemy)
+    {
+        m_bCTFCombatPhase = false;
+        m_iCTFDecisionTime = 0;
+    }
+
+    if (hasenemy && (!ctfobjective || (m_bCTFCombatPhase && !ctfcarrier))) // Combat
     {
         CheckReload();
         CheckScope();
@@ -790,6 +943,11 @@ void CBot::MainAI()
         m_eCurrentBotState = STATE_HUNT;
     }
     // Heading to an interesting entity(ammo, armour etc)
+    else if (ctfobjective)
+    {
+        CheckReload();
+        m_eCurrentBotState = STATE_SP;
+    }
     else if (CheckItems())
     {
         CheckReload();
@@ -1971,7 +2129,7 @@ void CBot::HearSound(int n, vec *o)
         }
 
         // Check local player
-        if (player1 && (player1->state == CS_ALIVE) &&
+        if (player1 && player1 != m_pMyEnt && (player1->state == CS_ALIVE) &&
             !isteam(m_pMyEnt->team, player1->team))
         {
             flDist = GetDistance(*o, player1->o);

@@ -192,7 +192,7 @@ public:
      waypoint_s *m_pCurrentWaypoint;
      waypoint_s *m_pCurrentGoalWaypoint;
      vec m_vGoal;
-     waypoint_s *m_pPrevWaypoints[5];
+      waypoint_s *m_pPrevWaypoints[8];
      int m_iRandomWaypointTime;
      float m_fPrevWaypointDistance;
      int m_iLookForWaypointTime;
@@ -210,6 +210,8 @@ public:
      int m_iCheckEntsDelay;
      int m_iCheckTriggersDelay;
      int m_iAimDelay;
+      int m_iCTFDecisionTime;
+      bool m_bCTFCombatPhase;
      float m_fYawToTurn, m_fPitchToTurn;
      bot_skill_s *m_pBotSkill; // Pointer to current bot skill
      short m_sSkillNr; // Skill number, 0 == best 4 == worst
@@ -238,6 +240,7 @@ public:
      void CheckScope(void);
      void ShootEnemy(void);
      bool CheckHunt(void);
+      bool CheckCTFObjective(void);
      bool HuntEnemy(void);
      void DoCombatNav(void);
      void MainAI(void);
@@ -339,6 +342,9 @@ class CBotManager
      short m_sCurrentTriggerNr; // Current waypoint trigger bots should use
      TLinkedList<CStoredBot *> m_StoredBots; // List of bots that should be re-added after map change
      float m_fReAddBotDelay;
+     CBot *m_pClientBot;
+     int m_iClientTeamRequest;
+     int m_iClientWaypointCount;
 
      void LoadBotNamesFile(void);
      const char *GetBotName(void);
@@ -355,13 +361,14 @@ public:
      botent *m_pBotToView;
 
      // Construction
-     CBotManager(void) { m_bInit = true; m_bBotsShoot = true; m_bIdleBots = false; m_fReAddBotDelay = -1.0f; };
+      CBotManager(void) { m_bInit = true; m_bBotsShoot = true; m_bIdleBots = false; m_fReAddBotDelay = -1.0f; m_pClientBot = NULL; m_iClientTeamRequest = 0; m_iClientWaypointCount = -1; };
 
      // Destruction
      ~CBotManager(void);
 
      void Init(void);
      void Think(void);
+      void ThinkClient(void);
      void RenderBots(void);
      void RespawnBots(void) { loopv(bots) if (bots[i] && bots[i]->pBot) bots[i]->pBot->Spawn(); };
      void ClearStoredBots(void) { while(!m_StoredBots.Empty()) delete m_StoredBots.Pop(); }

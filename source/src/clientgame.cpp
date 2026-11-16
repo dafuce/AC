@@ -3,6 +3,8 @@
 #include "cube.h"
 #include "bot/bot.h"
 
+extern bool botrunner;
+
 int nextmode = 0;   // nextmode becomes gamemode after next map load
 VAR(gamemode, 1, 0, 0);
 VARP(modeacronyms, 0, 1, 1);
@@ -22,6 +24,7 @@ int arenaintermission = 0;
 struct serverstate servstate = { 0 };
 
 playerent *player1 = newplayerent();          // our client
+static botent *clientbotplayer1 = NULL;
 vector<playerent *> players;                  // other clients
 
 int lastmillis = 0, totalmillis = 0, skipmillis = 0;
@@ -470,6 +473,23 @@ playerent *newplayerent()                 // create a new blank player
     return d;
 }
 
+void makeplayer1bot()
+{
+    botent *d = new botent;
+    d->lastupdate = totalmillis;
+    setskin(d, rnd(6));
+    weapon::equipplayer(d);
+    spawnstate(d);
+    delete player1;
+    player1 = d;
+    clientbotplayer1 = d;
+}
+
+botent *getclientbotplayer()
+{
+    return clientbotplayer1;
+}
+
 botent *newbotent()                 // create a new blank player
 {
     botent *d = new botent;
@@ -690,8 +710,9 @@ void updateworld(int curtime, int lastmillis)        // main game update loop
 
     // Added by Rick: let bots think
     if(m_botmode) BotManager.Think();
+    else if(botrunner) BotManager.ThinkClient();
 
-    movelocalplayer();
+    if(!botrunner) movelocalplayer();
     c2sinfo(player1);   // do this last, to reduce the effective frame lag
 }
 
@@ -830,7 +851,7 @@ bool tryrespawn()
         }
         else
         {
-            int respawnmillis = player1->lastdeath + (m_arena ? 0 : (m_flags_ ? 5000 : 2000));
+            int respawnmillis = player1->lastdeath + (m_arena ? 0 : (m_ctf ? 10000 : (m_flags_ ? 5000 : 2000)));
             if(lastmillis>respawnmillis)
             {
                 player1->attacking = false;
@@ -1182,7 +1203,7 @@ void startmap(const char *name, bool reset, bool norespawn)   // called just aft
     if(norespawn) return;
 
     sendmapidenttoserver = true;
-    if(m_botmode) BotManager.BeginMap(name);
+    if(m_botmode || botrunner) BotManager.BeginMap(name);
     else kickallbots();
     showmipstats = false;
     clearbounceents();

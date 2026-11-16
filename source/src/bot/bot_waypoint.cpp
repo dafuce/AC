@@ -1050,7 +1050,7 @@ bool CWaypointClass::WPIsReachable(vec from, vec to)
      return false;
 }
 
-node_s *CWaypointClass::GetNearestWaypoint(vec v_src, float flRange)
+node_s *CWaypointClass::GetNearestWaypoint(vec v_src, float flRange, bool checkvisible)
 {
      TLinkedList<node_s *>::node_s *pNode;
      node_s *pNearest = NULL;
@@ -1083,7 +1083,7 @@ node_s *CWaypointClass::GetNearestWaypoint(vec v_src, float flRange)
                     flDist = GetDistance(v_src, pNode->Entry->v_origin);
                     if ((flDist < flNearestDist) && (flDist <= flRange))
                     {
-                         if (IsVisible(v_src, pNode->Entry->v_origin, NULL))
+                          if (!checkvisible || IsVisible(v_src, pNode->Entry->v_origin, NULL))
                          {
                               pNearest = pNode->Entry;
                               flNearestDist = flDist;
@@ -1895,12 +1895,12 @@ bool CBot::FindWaypoint()
 {
      waypoint_s *wp, *wpselect;
      int index;
-     float distance, min_distance[3];
+     float min_score[3];
      waypoint_s *min_wp[3];
 
      for (index=0; index < 3; index++)
      {
-          min_distance[index] = 9999.0;
+          min_score[index] = 999999.0f;
           min_wp[index] = NULL;
      }
 
@@ -1922,41 +1922,62 @@ bool CBot::FindWaypoint()
                continue;
           }
 
-          // if index is not a current or recent previous waypoint...
-          if ((wp != m_pCurrentWaypoint) &&
-              (wp != m_pPrevWaypoints[0]) &&
-              (wp != m_pPrevWaypoints[1]) &&
-              (wp != m_pPrevWaypoints[2]) &&
-              (wp != m_pPrevWaypoints[3]) &&
-              (wp != m_pPrevWaypoints[4]))
+           if (wp != m_pCurrentWaypoint)
           {
-               // find the distance from the bot to this waypoint
-               distance = GetDistance(wp->pNode->v_origin);
+                float distance = GetDistance(wp->pNode->v_origin);
+                float targetYaw = -(float)atan2(
+                    wp->pNode->v_origin.x - m_pMyEnt->o.x,
+                    wp->pNode->v_origin.y - m_pMyEnt->o.y) / PI * 180.0f + 180.0f;
+                float yawDiff = targetYaw - m_pMyEnt->yaw;
+                while (yawDiff > 180.0f) yawDiff -= 360.0f;
+                while (yawDiff < -180.0f) yawDiff += 360.0f;
 
-               if (distance < min_distance[0])
-               {
-                    min_distance[2] = min_distance[1];
-                    min_wp[2] = min_wp[1];
+                float score = distance + fabs(yawDiff) * 0.15f;
 
-                    min_distance[1] = min_distance[0];
-                    min_wp[1] = min_wp[0];
+                for (int previous = 0; previous < 8; previous++)
+                {
+                     if (wp == m_pPrevWaypoints[previous])
+                     {
+                          score += 20.0f + float(8 - previous) * 5.0f;
+                          break;
+                     }
+                }
 
-                    min_distance[0] = distance;
-                    min_wp[0] = wp;
-               }
-               else if (distance < min_distance [1])
-               {
-                    min_distance[2] = min_distance[1];
-                    min_wp[2] = min_wp[1];
+                int exits = 0;
+                TLinkedList<node_s *>::node_s *pExit = pNode->Entry->ConnectedWPs.GetFirst();
+                while (pExit)
+                {
+                     if (pExit->Entry != m_pCurrentWaypoint->pNode)
+                          exits++;
+                     pExit = pExit->next;
+                }
 
-                    min_distance[1] = distance;
-                    min_wp[1] = wp;
-               }
-               else if (distance < min_distance[2])
-               {
-                    min_distance[2] = distance;
-                    min_wp[2] = wp;
-               }
+                if (exits == 0)
+                     score += 100.0f;
+                else if (exits == 1)
+                     score += 25.0f;
+
+                if (score < min_score[0])
+                {
+                     min_score[2] = min_score[1];
+                     min_wp[2] = min_wp[1];
+                     min_score[1] = min_score[0];
+                     min_wp[1] = min_wp[0];
+                     min_score[0] = score;
+                     min_wp[0] = wp;
+                }
+                else if (score < min_score[1])
+                {
+                     min_score[2] = min_score[1];
+                     min_wp[2] = min_wp[1];
+                     min_score[1] = score;
+                     min_wp[1] = wp;
+                }
+                else if (score < min_score[2])
+                {
+                     min_score[2] = score;
+                     min_wp[2] = wp;
+                }
           }
           pNode = pNode->next;
      }
@@ -2103,7 +2124,7 @@ bool CBot::HeadToWaypoint()
           }
           else
           {
-               short index = 4;
+               short index = 7;
                bool status;
 
                // try to find the next waypoint
@@ -2653,6 +2674,9 @@ void CBot::ResetWaypointVars()
      m_pPrevWaypoints[2] = NULL;
      m_pPrevWaypoints[3] = NULL;
      m_pPrevWaypoints[4] = NULL;
+     m_pPrevWaypoints[5] = NULL;
+     m_pPrevWaypoints[6] = NULL;
+     m_pPrevWaypoints[7] = NULL;
      m_fPrevWaypointDistance = 0;
      m_iWaypointHeadLastTurnLessTime = 0;
      m_iWaypointHeadPauseTime = 0;

@@ -14,6 +14,7 @@
 #include "bot.h"
 
 extern void respawnself();
+extern botent *getclientbotplayer();
 
 CBotManager BotManager;
 
@@ -21,6 +22,8 @@ CBotManager BotManager;
 
 CBotManager::~CBotManager(void)
 {
+    delete m_pClientBot;
+    m_pClientBot = NULL;
     EndMap();
     ClearStoredBots();
 }
@@ -38,6 +41,50 @@ void CBotManager::Init()
     LoadBotTeamsFile();
     //WaypointClass.Init();
     lsrand(time(NULL));
+}
+
+void CBotManager::ThinkClient()
+{
+    m_iFrameTime = lastmillis - m_iPrevTime;
+    if (m_iFrameTime > 250) m_iFrameTime = 250;
+    m_iPrevTime = lastmillis;
+
+    WaypointClass.Think();
+
+    if (m_bInit)
+    {
+        Init();
+        m_bInit = false;
+    }
+    if (!m_pClientBot)
+    {
+        m_pClientBot = new CACBot;
+        m_pClientBot->m_pMyEnt = getclientbotplayer();
+        m_pClientBot->Spawn();
+        m_pClientBot->m_iLastBotUpdate = 0;
+        m_pClientBot->m_bSendC2SInit = false;
+        m_pClientBot->m_sSkillNr = m_sBotSkill;
+        m_pClientBot->m_pBotSkill = &m_BotSkills[m_sBotSkill];
+        m_pClientBot->SyncWaypoints();
+        m_iClientWaypointCount = WaypointClass.m_iWaypointCount;
+    }
+    if (m_pClientBot && m_iClientWaypointCount != WaypointClass.m_iWaypointCount)
+    {
+        m_pClientBot->SyncWaypoints();
+        m_iClientWaypointCount = WaypointClass.m_iWaypointCount;
+    }
+    if (m_teammode && player1->team == TEAM_SPECT && lastmillis >= m_iClientTeamRequest)
+    {
+        addmsg(SV_SWITCHTEAM, "ri", rnd(2));
+        m_iClientTeamRequest = lastmillis + 1000;
+    }
+    if (player1->state == CS_DEAD || player1->state == CS_SPECTATE)
+    {
+        tryrespawn();
+        return;
+    }
+    m_pClientBot->CheckWeaponSwitch();
+    m_pClientBot->Think();
 }
 
 void CBotManager::Think()
@@ -320,6 +367,7 @@ void CBotManager::EndMap()
 void CBotManager::BeginMap(const char *szMapName)
 {
     EndMap(); // End previous map
+    m_iClientWaypointCount = -1;
 
     WaypointClass.Init();
     WaypointClass.SetMapName(szMapName);

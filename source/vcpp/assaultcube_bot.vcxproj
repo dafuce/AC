@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="assaultcube.vcxproj" />
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{7A4F47D8-8B51-4B60-9B33-5F7B1AA4A4D7}</ProjectGuid>
+    <RootNamespace>assaultcube_bot</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetName>ac_bot</TargetName><TargetPath>$(OutDir)ac_bot.exe</TargetPath><OutDir>..\..\bin_win32\</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'"><TargetName>ac_bot</TargetName></PropertyGroup><PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'"><TargetName>ac_bot</TargetName></PropertyGroup><PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'"><TargetName>ac_bot</TargetName></PropertyGroup><ItemDefinitionGroup><Link><OutputFile>$(TargetPath)</OutputFile></Link></ItemDefinitionGroup></Project>

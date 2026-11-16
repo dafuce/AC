@@ -31,6 +31,13 @@ void cleanup(char *msg)         // single program exit point;
 
 VAR(resetcfg, 0, 0, 1);
 
+extern void makeplayer1bot();
+
+bool botrunner = false;
+string botconnect = "127.0.0.1";
+int botport = CUBE_DEFAULT_SERVER_PORT;
+string botname = "localbot";
+
 void quit()                     // normal exit
 {
     if(clientlogfile) clientlogfile->fflush();
@@ -590,6 +597,7 @@ void setupscreen(int &useddepthbits, int &usedfsaa)
     int winh = fullscreen && fullscreendesktop ? desktoph : scr_h;
 
     int flags = SDL_WINDOW_RESIZABLE;
+    if(botrunner) flags |= SDL_WINDOW_HIDDEN;
     if(fullscreen) flags |= fullscreendesktop ? SDL_WINDOW_FULLSCREEN_DESKTOP : SDL_WINDOW_FULLSCREEN;
 
     static int configs[] =
@@ -678,7 +686,8 @@ void resetgl()
 
     int useddepthbits = 0, usedfsaa = 0;
     setupscreen(useddepthbits, usedfsaa);
-    gl_init(screenw, screenh, useddepthbits, usedfsaa);
+    if(botrunner) minimized = true;
+    if(!botrunner) gl_init(screenw, screenh, useddepthbits, usedfsaa);
 
     extern void reloadfonts();
     extern Texture *startscreen;
@@ -1287,6 +1296,25 @@ int main(int argc, char **argv)
                         printf("%.3f\n", AC_VERSION/1000.0f);
                         quitdirectly = true;
                     }
+                    else if(!strcmp(argv[i], "--bot"))
+                    {
+                        botrunner = true;
+                    }
+                    else if(!strncmp(argv[i], "--bot-connect=", 14))
+                    {
+                        botrunner = true;
+                        copystring(botconnect, &argv[i][14]);
+                    }
+                    else if(!strncmp(argv[i], "--bot-port=", 11))
+                    {
+                        botrunner = true;
+                        botport = atoi(&argv[i][11]);
+                    }
+                    else if(!strncmp(argv[i], "--bot-name=", 11))
+                    {
+                        botrunner = true;
+                        copystring(botname, &argv[i][11]);
+                    }
                     else if(!strcmp(argv[i], "--protocol"))
                     {
                         printf("%d\n", PROTOCOL_VERSION);
@@ -1326,6 +1354,7 @@ int main(int argc, char **argv)
     entropy_init(time(NULL) + (uint)(size_t)&initscript + (uint)(size_t)entropy_init);
     initclientlog();
     if(quitdirectly) return EXIT_SUCCESS;
+    if(botrunner) makeplayer1bot();
     if(waitforauth)
     {
         hudoutf("\f5.. \f2waiting \f4for \fUauth\f5entication .."); // general notification - more prominent to show things are about to happen
@@ -1384,7 +1413,13 @@ int main(int argc, char **argv)
 
     initlog("gl");
     gl_checkextensions();
-    gl_init(screenw, screenh, useddepthbits, usedfsaa);
+    if(botrunner)
+    {
+        initlog("gl skipped for bot");
+        inittmus();
+        resetcamera();
+    }
+    else gl_init(screenw, screenh, useddepthbits, usedfsaa);
 
     notexture = noworldtexture = textureload("packages/misc/notexture.jpg");
     if(!notexture) fatal("could not find core textures (hint: run AssaultCube from the parent of the bin directory)");
@@ -1403,7 +1438,7 @@ int main(int argc, char **argv)
     particleinit();
 
     initlog("sound");
-    audiomgr.initsound();
+    if(!botrunner) audiomgr.initsound();
 
     initlog("cfg");
     extern void *scoremenu, *servmenu, *searchmenu, *serverinfomenu, *kickmenu, *banmenu, *forceteammenu, *giveadminmenu, *docmenu, *applymenu, *downloaddemomenu;
@@ -1502,6 +1537,14 @@ int main(int argc, char **argv)
     copystring(clientmap, initmap); // ac_complex for 1.0, ac_shine for 1.1, ..
 
     localconnect();
+
+    if(botrunner)
+    {
+        defformatstring(botconnectcmd)("name %s", botname);
+        execute(botconnectcmd);
+        defformatstring(connectcmd)("connect %s %d", botconnect, botport);
+        execute(connectcmd);
+    }
 
     if(initscript) execute(initscript);
 
