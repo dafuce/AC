@@ -29,6 +29,8 @@ vector<playerent *> players;                  // other clients
 
 int lastmillis = 0, totalmillis = 0, skipmillis = 0;
 int lasthit = 0;
+int hitmarkertime = 0;
+color hitmarkercolor(1.0f, 1.0f, 1.0f);
 int curtime = 0;
 string clientmap = "";
 int spawnpermission = SP_WRONGMAP;
@@ -924,6 +926,11 @@ COMMANDF(burstshots, "si", (char *gun, int *shots)
 void dodamage(int damage, playerent *pl, playerent *actor, int gun, bool gib, bool local)
 {
     if(pl->state != CS_ALIVE || intermission || ispaused) return;
+    if(actor == player1 && pl != actor)
+    {
+        hitmarkercolor = getcrosshaircolor(player1, player1->weaponsel ? player1->weaponsel->type : CROSSHAIR_DEFAULT);
+        hitmarkertime = lastmillis + 250;
+    }
     pl->lastpain = lastmillis;
     playerent *h = player1->isspectating() && player1->followplayercn >= 0 && (player1->spectatemode == SM_FOLLOW1ST || player1->spectatemode == SM_FOLLOW3RD || player1->spectatemode == SM_FOLLOW3RD_TRANSPARENT) ? getclient(player1->followplayercn) : NULL;
     if(!h) h = player1;

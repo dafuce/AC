@@ -487,6 +487,7 @@ enum
 extern const char *crosshairnames[];
 extern Texture *crosshairs[];
 extern void drawcrosshair(playerent *p, int n, struct color *c = NULL, float size = -1.0f);
+extern color getcrosshaircolor(playerent *p, int n, struct color *c = NULL);
 
 // autodownload
 enum { PCK_TEXTURE = 0, PCK_SKYBOX, PCK_MAPMODEL, PCK_AUDIO, PCK_MAP, PCK_MOD, PCK_NUM };
@@ -560,6 +561,8 @@ extern int gametimemaximum;
 extern int lastgametimeupdate;
 struct serverstate { int autoteam; int mastermode; int matchteamsize; void reset() { autoteam = mastermode = matchteamsize = 0; }};
 extern struct serverstate servstate;
+extern int hitmarkertime;
+extern color hitmarkercolor;
 extern void updateworld(int curtime, int lastmillis);
 extern void resetmap(bool mrproper = true);
 extern void startmap(const char *name, bool reset = true, bool norespawn = false);
@@ -568,6 +571,7 @@ extern void initclient();
 extern void deathstate(playerent *pl);
 extern void spawnplayer(playerent *d);
 extern void dodamage(int damage, playerent *pl, playerent *actor, int gun = -1, bool gib = false, bool local = true);
+extern void drawhitmarker();
 extern void dokill(playerent *pl, playerent *act, bool gib = false, int gun = 0);
 extern playerent *newplayerent();
 extern botent *newbotent();

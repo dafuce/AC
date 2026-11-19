@@ -209,6 +209,22 @@ void loadcrosshair(const char *type, const char *filename)
 
 COMMAND(loadcrosshair, "ss");
 
+color getcrosshaircolor(playerent *p, int n, color *c)
+{
+    color result(1.0f, 1.0f, 1.0f);
+    if(c) result = *c;
+    else if(crosshairfx==1 || crosshairfx==2 || n==CROSSHAIR_TEAMMATE)
+    {
+        if(n==CROSSHAIR_TEAMMATE) result = color(1.0f, 0.0f, 0.0f);
+        else if(!m_osok)
+        {
+            if(p->health<=25) result = color(1.0f, 0.0f, 0.0f);
+            else if(p->health<=50) result = color(1.0f, 0.5f, 0.0f);
+        }
+    }
+    return result;
+}
+
 void drawcrosshair(playerent *p, int n, color *c, float size)
 {
     if (cleanedit && editmode) return;
@@ -222,17 +238,8 @@ void drawcrosshair(playerent *p, int n, color *c, float size)
     if(crosshair->bpp==32) glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     else glBlendFunc(GL_ONE, GL_ONE);
     glBindTexture(GL_TEXTURE_2D, crosshair->id);
-    glColor3ub(255,255,255);
-    if(c) glColor3f(c->r, c->g, c->b);
-    else if(crosshairfx==1 || crosshairfx==2 || n==CROSSHAIR_TEAMMATE)
-    {
-        if(n==CROSSHAIR_TEAMMATE) glColor3ub(255, 0, 0);
-        else if(!m_osok)
-        {
-            if(p->health<=25) glColor3ub(255,0,0);
-            else if(p->health<=50) glColor3ub(255,128,0);
-        }
-    }
+    color crosshaircolor = getcrosshaircolor(p, n, c);
+    glColor3f(crosshaircolor.r, crosshaircolor.g, crosshaircolor.b);
     float s = size>0 ? size : (float)crosshairsize;
     float chsize = s * ((p == player1 && p->weaponsel->type==GUN_ASSAULT && p->weaponsel->shots > 3) && (crosshairfx==1 || crosshairfx==3) ? 1.4f : 1.0f) * (n==CROSSHAIR_TEAMMATE ? 2.0f : 1.0f);
     glBegin(GL_TRIANGLE_STRIP);
@@ -240,6 +247,28 @@ void drawcrosshair(playerent *p, int n, color *c, float size)
     glTexCoord2f(1, 0); glVertex2f(VIRTW/2 + chsize, VIRTH/2 - chsize);
     glTexCoord2f(0, 1); glVertex2f(VIRTW/2 - chsize, VIRTH/2 + chsize);
     glTexCoord2f(1, 1); glVertex2f(VIRTW/2 + chsize, VIRTH/2 + chsize);
+    glEnd();
+}
+
+void drawhitmarker()
+{
+    static Texture *hitmarker = NULL;
+    if(hitmarkertime <= lastmillis) return;
+    if(!hitmarker) hitmarker = textureload("packages/misc/hitmarker.png", 3);
+    if(!hitmarker || hitmarker == notexture) return;
+
+    int remaining = hitmarkertime - lastmillis;
+    float alpha = remaining / 250.0f;
+    float size = crosshairsize * 2.5f;
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBindTexture(GL_TEXTURE_2D, hitmarker->id);
+    glColor4f(hitmarkercolor.r, hitmarkercolor.g, hitmarkercolor.b, alpha);
+    glBegin(GL_TRIANGLE_STRIP);
+    glTexCoord2f(0, 0); glVertex2f(VIRTW/2 - size, VIRTH/2 - size);
+    glTexCoord2f(1, 0); glVertex2f(VIRTW/2 + size, VIRTH/2 - size);
+    glTexCoord2f(0, 1); glVertex2f(VIRTW/2 - size, VIRTH/2 + size);
+    glTexCoord2f(1, 1); glVertex2f(VIRTW/2 + size, VIRTH/2 + size);
     glEnd();
 }
 
@@ -815,6 +844,7 @@ void gl_drawhud(int w, int h, int curfps, int nquads, int curvert, bool underwat
         if(!reloading) p->weaponsel->renderaimhelp(drawteamwarning);
         if(!editmode && !showmap) drawktfindicator(p);
     }
+    if(p == player1) drawhitmarker();
 
     // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // without below condition it was always set in drawdmgindicator()
     if(damageindicatorplayer == p || (is_spect && getclient(player1->followplayercn) == damageindicatorplayer)) drawdmgindicator(p);
