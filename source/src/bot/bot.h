@@ -192,7 +192,7 @@ public:
      waypoint_s *m_pCurrentWaypoint;
      waypoint_s *m_pCurrentGoalWaypoint;
      vec m_vGoal;
-      waypoint_s *m_pPrevWaypoints[8];
+     waypoint_s *m_pPrevWaypoints[5];
      int m_iRandomWaypointTime;
      float m_fPrevWaypointDistance;
      int m_iLookForWaypointTime;
@@ -210,8 +210,6 @@ public:
      int m_iCheckEntsDelay;
      int m_iCheckTriggersDelay;
      int m_iAimDelay;
-      int m_iCTFDecisionTime;
-      bool m_bCTFCombatPhase;
      float m_fYawToTurn, m_fPitchToTurn;
      bot_skill_s *m_pBotSkill; // Pointer to current bot skill
      short m_sSkillNr; // Skill number, 0 == best 4 == worst
@@ -240,7 +238,6 @@ public:
      void CheckScope(void);
      void ShootEnemy(void);
      bool CheckHunt(void);
-      bool CheckCTFObjective(void);
      bool HuntEnemy(void);
      void DoCombatNav(void);
      void MainAI(void);

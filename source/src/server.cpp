@@ -16,10 +16,13 @@ VARP(serverdebug, 0, 0, 1);
 
 #include "signal.h"
 
+extern servercommandline scl;
+
 struct servergame
 {
     int mastermode;
     bool autoteam;
+    bool friendlyfire;
     int matchteamsize;
     bool forceintermission;
     string servdesc_current;
@@ -49,6 +52,7 @@ struct servergame
     {
         mastermode = MM_OPEN;
         autoteam = true;
+        friendlyfire = scl.friendlyfire;
         matchteamsize = 0;
         forceintermission = false;
         custom_servdesc = false;
@@ -1886,6 +1890,7 @@ void checkitemspawns(int diff)
 void serverdamage(client *target, client *actor, int damage, int gun, bool gib, const vec &hitpush = vec(0, 0, 0))
 {
     if ( m_arena && gun == GUN_GRENADE && sg->arenaroundstartmillis + 2000 > sg->gamemillis && target != actor ) return;
+    if(target != actor && isteam(target->team, actor->team) && !sg->friendlyfire) return;
     clientstate &ts = target->state;
     ts.dodamage(damage, gun);
     if(damage < INT_MAX)
@@ -4898,6 +4903,7 @@ void restartlogging()
 
 void initserver(bool dedicated)
 {
+    sg->friendlyfire = scl.friendlyfire;
     copystring(servpubkey, "");
     if(scl.ssk && hex2bin(ssk, scl.ssk, 32) != 32) scl.ssk = NULL;
     ed25519_pubkey_from_private(spk, ssk);
@@ -4917,6 +4923,7 @@ void initserver(bool dedicated)
     {
         restartlogging();
         if(!logcheck(ACLOG_ERROR)) printf("WARNING: logging not started!\n");
+        mlog(ACLOG_INFO, "friendly fire: %s", sg->friendlyfire ? "enabled" : "disabled");
     }
     mlog(ACLOG_INFO, "logging local AssaultCube server (version %d, protocol %d/%d) now..", AC_VERSION, SERVER_PROTOCOL_VERSION, EXT_VERSION);
 

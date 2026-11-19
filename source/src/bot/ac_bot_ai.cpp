@@ -77,6 +77,11 @@ bool CACBot::ChoosePreferredWeapon()
             continue; // Wrong distance for this weapon
         }
 
+        if(i == GUN_GRENADE)
+        {
+            sWeaponScore += 30; // Nades have high priority
+        }
+
         // The ideal distance would be between the Min and Max desired distance.
         // Score on the difference of the avarage of the Min and Max desired distance.
         float flAvarage = (WeaponInfoTable[i].flMinDesiredDistance +
@@ -175,7 +180,7 @@ entity *CACBot::SearchForEnts(bool bUseWPs, float flRange, float flMaxHeight)
                 break;
             case I_GRENADE:
                 sMaxAmmo = ammostats[GUN_GRENADE].max;
-                bInteresting = (m_pMyEnt->mag[GUN_GRENADE] == 0);
+                bInteresting = (m_pMyEnt->mag[GUN_GRENADE]<sMaxAmmo);
                 sAmmo = -1;
                 break;
             case I_HEALTH:
@@ -186,7 +191,7 @@ entity *CACBot::SearchForEnts(bool bUseWPs, float flRange, float flMaxHeight)
             case I_HELMET:
             case I_ARMOUR:
                sMaxAmmo = powerupstats[I_ARMOUR-I_HEALTH].max;
-               bInteresting = (m_pMyEnt->armour == 0);
+               bInteresting = (m_pMyEnt->armour < sMaxAmmo);
                sAmmo = m_pMyEnt->armour;
                break;
             case I_AKIMBO:

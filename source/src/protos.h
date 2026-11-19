@@ -1175,6 +1175,7 @@ struct serverconfigfile
 struct servercommandline
 {
     int uprate, serverport, syslogfacility, filethres, syslogthres, maxdemos, maxclients, kickthreshold, banthreshold, verbose, incoming_limit, afk_limit, ban_time;
+    bool friendlyfire;
     const char *ip, *master, *logident, *serverpassword, *adminpasswd, *demopath, *maprotfile, *pwdfile, *blfile, *geoipfile, *nbfile, *infopath, *motdpath, *forbidden, *service, *logfilepath, *parfilepath, *ssk, *vitabasename;
     bool logtimestamp, demo_interm, loggamestatus;
     string motd, servdesc_full, servdesc_pre, servdesc_suf, voteperm, mapperm;
@@ -1187,7 +1188,7 @@ struct servercommandline
                             maprotfile("config/maprot.cfg"), pwdfile("config/serverpwd.cfg"), blfile("config/serverblacklist.cfg"), geoipfile("config/geoip.cfg"), nbfile("config/nicknameblacklist.cfg"),
                             infopath("config/serverinfo"), motdpath("config/motd"), forbidden("config/forbidden.cfg"), service(NULL), logfilepath("logs/"), parfilepath("config/serverparameters.cfg"), ssk(NULL), vitabasename("config/servervita"),
                             logtimestamp(false), demo_interm(false), loggamestatus(true),
-                            clfilenesting(0)
+                             clfilenesting(0), friendlyfire(true)
     {
         motd[0] = servdesc_full[0] = servdesc_pre[0] = servdesc_suf[0] = voteperm[0] = mapperm[0] = '\0';
     }
@@ -1279,6 +1280,7 @@ struct servercommandline
             case 'o': filterrichtext(motd, a); break;
             case 'O': motdpath = a; break;
             case 'g': forbidden = a; break;
+            case 'q': friendlyfire = ai != 0; break;
             case 'n':
             {
                 char *t = servdesc_full;

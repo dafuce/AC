@@ -42,7 +42,7 @@ void CBot::Spawn()
 
      m_pMyEnt->targetyaw = m_pMyEnt->targetpitch = 0.0f;
      m_pMyEnt->enemy = NULL;
-     m_pMyEnt->maxspeed = (m_pMyEnt == player1) ? 8.0f : 22.0f;
+     m_pMyEnt->maxspeed = 11.0f;
      m_pMyEnt->pBot = this;
 
      m_eCurrentBotState = STATE_NORMAL;
@@ -77,8 +77,6 @@ void CBot::Spawn()
      m_iCheckTeleporterDelay = m_iCheckJumppadsDelay = 0;
      m_iCheckEntsDelay = 0;
      m_iCheckTriggersDelay = 0;
-      m_iCTFDecisionTime = 0;
-      m_bCTFCombatPhase = false;
      m_iLookForWaypointTime = 0;
 
      m_iAimDelay = 0;
@@ -101,7 +99,7 @@ void CBot::Think()
             m_pMyEnt->move = 0;
             moveplayer(m_pMyEnt, 1, true);
         }
-        else if (!m_arena && lastmillis-m_pMyEnt->lastdeath>(m_ctf ? 10000 : 5000)) Spawn();
+        else if (!m_arena && lastmillis-m_pMyEnt->lastdeath>5000) Spawn();
         SendBotInfo();
         return;
     }
@@ -149,11 +147,6 @@ void CBot::AimToIdeal()
                                    m_pBotSkill->flMaxAimXSpeed);
      float MaxYSpeed = RandomFloat(m_pBotSkill->flMinAimYSpeed,
                                    m_pBotSkill->flMaxAimYSpeed);
-     if (m_pMyEnt == player1)
-     {
-          MaxXSpeed *= 0.6f;
-          MaxYSpeed *= 0.6f;
-     }
      float XOffset = RandomFloat(m_pBotSkill->flMinAimXOffset,
                                  m_pBotSkill->flMaxAimXOffset);
      float YOffset = RandomFloat(m_pBotSkill->flMinAimYOffset,
@@ -212,15 +205,58 @@ void CBot::AimToIdeal()
 // Function code by Botman
 float CBot::ChangeAngle(float speed, float ideal, float current)
 {
-     float delta = ideal - current;
-     while (delta > 180.0f) delta -= 360.0f;
-     while (delta < -180.0f) delta += 360.0f;
+     float current_180;  // current +/- 180 degrees
+     float diff;
 
-     float step = speed * (float(BotManager.m_iFrameTime) / 1000.0f);
-     if (fabs(delta) <= step)
+     // find the difference in the current and ideal angle
+     diff = fabs(current - ideal);
+
+     // speed that we can turn during this frame...
+     speed = speed * (float(BotManager.m_iFrameTime)/1000.0f);
+
+     // check if difference is less than the max degrees per turn
+     if (diff < speed)
+          speed = diff;  // just need to turn a little bit (less than max)
+
+     // check if the bot is already facing the idealpitch direction...
+     if (diff <= 0.5f)
           return ideal;
 
-     return current + (delta > 0.0f ? step : -step);
+     if ((current >= 180) && (ideal >= 180))
+     {
+          if (current > ideal)
+               current -= speed;
+          else
+               current += speed;
+     }
+     else if ((current >= 180) && (ideal < 180))
+     {
+          current_180 = current - 180;
+
+          if (current_180 > ideal)
+               current += speed;
+          else
+               current -= speed;
+     }
+     else if ((current < 180) && (ideal >= 180))
+     {
+          current_180 = current + 180;
+
+          if (current_180 > ideal)
+               current += speed;
+          else
+               current -= speed;
+     }
+     else  // (current < 180) && (ideal < 180)
+     {
+          if (current > ideal)
+               current -= speed;
+          else
+               current += speed;
+     }
+
+
+     return current;
 }
 
 void CBot::SendBotInfo()

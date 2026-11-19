@@ -144,7 +144,7 @@ public:
 
      bool WPIsReachable(vec from, vec to);
      //node_s *GetNearestWaypoint(vec v_src, float flRange, bool CheckVisible = true, bool SkipFloodWPs = true);
-      node_s *GetNearestWaypoint(vec v_src, float flRange, bool checkvisible = true);
+     node_s *GetNearestWaypoint(vec v_src, float flRange);
      node_s *GetNearestWaypoint(dynent *d, float flRange) { return GetNearestWaypoint(d->o, flRange); };
      node_s *GetNearestTriggerWaypoint(vec v_src, float flRange);
      node_s *GetWaypointFromVec(const vec &v_src);
